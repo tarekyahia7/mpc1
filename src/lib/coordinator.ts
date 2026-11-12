@@ -352,13 +352,13 @@ export async function refreshTask(taskId: string): Promise<RefreshResult> {
 
 /* ==================== الصياغة العربية للردود ==================== */
 
-export function formatCompletedTask(task: TaskRow): string {
-  const urls = safeParse<string[]>(task.result_urls_json, []);
-  if (task.type === "image") {
+/** صياغة النتائج المكتملة حسب نوع المهمة (مشتركة بين runGeneration وget_task وlist_media) */
+export function formatCompletedText(taskType: string, urls: string[]): string {
+  if (taskType === "image") {
     const imgs = urls.map((u) => `![image](${u})`).join("\n\n");
     return `✅ تم توليد الصورة بنجاح\n\n${imgs}\n\nالرابط المباشر: ${urls[0] ?? ""}`;
   }
-  if (task.type === "video") {
+  if (taskType === "video") {
     const links = urls.map((u) => `- ${u}`).join("\n");
     return `✅ تم توليد الفيديو بنجاح\n\nالروابط المباشرة:\n${links}`;
   }
@@ -366,9 +366,36 @@ export function formatCompletedTask(task: TaskRow): string {
   return `✅ تم دمج المقاطع بنجاح\n\nالرابط المباشر: ${urls[0] ?? ""}\n\n⚠️ ملف الدمج يُحذف من خدمة الدمج بعد ~24 ساعة — شاهده/نزّله سريعًا.`;
 }
 
+export function formatCompletedTask(task: TaskRow): string {
+  return formatCompletedText(task.type, safeParse<string[]>(task.result_urls_json, []));
+}
+
+export function formatProcessingText(taskId: string, progress?: number): string {
+  const pct = progress && progress > 0 ? `\n\nالتقدم الحالي: ~${progress}%` : "";
+  return `⏳ المهمة قيد المعالجة — task_id: ${taskId}${pct}\n\nتابع بـ get_task كل ~10 ثوانٍ حتى تكتمل.`;
+}
+
 export function formatProcessingTask(task: TaskRow): string {
-  const pct = task.progress > 0 ? `\n\nالتقدم الحالي: ~${task.progress}%` : "";
-  return `⏳ المهمة قيد المعالجة — task_id: ${task.id}${pct}\n\nتابع بـ get_task كل ~10 ثوانٍ حتى تكتمل.`;
+  return formatProcessingText(task.id, task.progress);
+}
+
+/**
+ * تحويل نتيجة الأداة إلى نص عربي جاهز للعميل + isError.
+ * ملاحظة القاعدة الذهبية 4: رسائل kind=failed/no_keys لا تحتوي أي ذكر للمفاتيح أو الرصيد
+ * (المنسق يصفّيها عبر scrubSecrets قبل الوصول إلى هنا).
+ */
+export function formatToolOutcome(outcome: ToolOutcome): { text: string; isError: boolean } {
+  switch (outcome.kind) {
+    case "completed":
+      return { text: formatCompletedText(outcome.taskType ?? "", outcome.urls ?? []), isError: false };
+    case "processing":
+      return { text: formatProcessingText(outcome.taskId ?? ""), isError: false };
+    case "no_keys":
+      return { text: outcome.message ?? "❌ لا توجد مفاتيح نشطة. أضف مفتاحًا واحدًا على الأقل من واجهة الإدارة، ثم أعد المحاولة.", isError: true };
+    case "failed":
+    default:
+      return { text: outcome.message ?? "❌ فشلت المهمة", isError: true };
+  }
 }
 
 /* ==================== دمج الفيديو — runMerge (قسم 7.3) ==================== */

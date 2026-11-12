@@ -52,3 +52,7 @@ prompt
 server.log
 # Skills directory
 /skills/
+# ملفات التشغيل المحلية
+*.pid
+dev.log
+server.log

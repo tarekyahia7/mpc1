@@ -2,7 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  /* config options here */
+  // @libsql/client و MCP SDK تُبقى خارج حزمة البناء (حزم Node خالصة تصل عبر HTTP)
+  serverExternalPackages: ["@libsql/client", "libsql"],
   typescript: {
     ignoreBuildErrors: true,
   },

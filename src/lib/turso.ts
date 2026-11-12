@@ -401,7 +401,7 @@ export async function updateKeyAfterUse(id: string, u: KeyUsageUpdate): Promise<
           SET usage_count = ?, success_count = ?, fail_count = ?, status = ?,
               last_used_at = datetime('now'), last_checked_at = datetime('now'), last_error = ?
           WHERE id = ?`,
-    args: [usage, success, fail, status, u.ok ? null : (u.error ?? null).slice(0, 500), id],
+    args: [usage, success, fail, status, u.ok ? null : (u.error ? String(u.error).slice(0, 500) : null), id],
   });
 }
 
